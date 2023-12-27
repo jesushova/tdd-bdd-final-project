@@ -194,4 +194,57 @@ class TestProductRoutes(TestCase):
         data = response.get_json()
         self.assertIn("was not found", data["message"])
 
-        
+     # UPDATE
+def test_update_product(self):
+    """It should Update a Product"""
+    product = self._create_products(1)[0]
+    product_data = {"name": "Updated Name", "description": "Updated Description"}
+    response = self.client.put(f"{BASE_URL}/{product.id}", json=product_data)
+    self.assertEqual(response.status_code, status.HTTP_200_OK)
+    updated_product = response.get_json()
+    self.assertEqual(updated_product["name"], "Updated Name")
+    self.assertEqual(updated_product["description"], "Updated Description")
+
+# DELETE
+def test_delete_product(self):
+    """It should Delete a Product"""
+    product = self._create_products(1)[0]
+    response = self.client.delete(f"{BASE_URL}/{product.id}")
+    self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+    self.assertEqual(len(Product.all()), 0)
+
+# LIST ALL
+def test_list_all_products(self):
+    """It should List all Products"""
+    self._create_products(5)
+    response = self.client.get(BASE_URL)
+    self.assertEqual(response.status_code, status.HTTP_200_OK)
+    data = response.get_json()
+    self.assertEqual(len(data), 5)
+
+# FIND BY NAME
+def test_find_by_name(self):
+    """It should Find a Product by Name"""
+    product = self._create_products(1)[0]
+    response = self.client.get(f"{BASE_URL}?name={product.name}")
+    self.assertEqual(response.status_code, status.HTTP_200_OK)
+    data = response.get_json()
+    self.assertEqual(data[0]["name"], product.name)
+
+# FIND BY CATEGORY
+def test_find_by_category(self):
+    """It should Find Products by Category"""
+    product = self._create_products(1)[0]
+    response = self.client.get(f"{BASE_URL}?category={product.category.name}")
+    self.assertEqual(response.status_code, status.HTTP_200_OK)
+    data = response.get_json()
+    self.assertEqual(data[0]["category"], product.category.name)
+
+# FIND BY AVAILABILITY
+def test_find_by_availability(self):
+    """It should Find Products by Availability"""
+    product = self._create_products(1)[0]
+    response = self.client.get(f"{BASE_URL}?available={product.available}")
+    self.assertEqual(response.status_code, status.HTTP_200_OK)
+    data = response.get_json()
+    self.assertEqual(data[0]["available"], product.available)

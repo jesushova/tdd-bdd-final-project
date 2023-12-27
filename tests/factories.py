@@ -31,7 +31,7 @@ class ProductFactory(factory.Factory):
         model = Product
 
     id = factory.Sequence(lambda n: n)
-# Add code to create Fake Products
+
 class ProductFactory(factory.Factory):
     """Creates fake products for testing"""
 
