@@ -34,6 +34,8 @@ from decimal import Decimal
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 
+
+
 logger = logging.getLogger("flask.app")
 
 # Create the SQLAlchemy object to be initialized later in init_db()
@@ -129,26 +131,20 @@ class Product(db.Model):
         Args:
             data (dict): A dictionary containing the Product data
         """
+        if not isinstance(data, dict):
+            raise DataValidationError("Invalid data format for deserializing a Product")
+
         try:
             self.name = data["name"]
             self.description = data["description"]
             self.price = Decimal(data["price"])
-            if isinstance(data["available"], bool):
-                self.available = data["available"]
-            else:
-                raise DataValidationError(
-                    "Invalid type for boolean [available]: "
-                    + str(type(data["available"]))
-                )
+            self.available = data["available"]
             self.category = getattr(Category, data["category"])  # create enum from string
-        except AttributeError as error:
-            raise DataValidationError("Invalid attribute: " + error.args[0]) from error
         except KeyError as error:
-            raise DataValidationError("Invalid product: missing " + error.args[0]) from error
-        except TypeError as error:
-            raise DataValidationError(
-                "Invalid product: body of request contained bad or no data " + str(error)
-            ) from error
+            raise DataValidationError(f"Invalid product: missing {error.args[0]}")
+        except (TypeError, ValueError) as error:
+            raise DataValidationError(f"Invalid value for product: {error}")
+
         return self
 
     ##################################################
@@ -247,3 +243,8 @@ class Product(db.Model):
         """
         logger.info("Processing category query for %s ...", category.name)
         return cls.query.filter(cls.category == category)
+
+
+
+
+

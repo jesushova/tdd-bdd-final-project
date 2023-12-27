@@ -30,6 +30,8 @@ from decimal import Decimal
 from service.models import Product, Category, db
 from service import app
 from tests.factories import ProductFactory
+from service.models import DataValidationError
+
 
 DATABASE_URI = os.getenv(
     "DATABASE_URI", "postgresql://postgres:postgres@localhost:5432/postgres"
@@ -193,3 +195,16 @@ class TestProductModel(unittest.TestCase):
         self.assertEqual(found.count(), count)
         for product in found:
             self.assertEqual(product.category, category)
+
+    def test_deserialize_error(self):
+        """Test deserialization with incorrect data types and missing fields"""
+        product = Product()
+        with self.assertRaises(DataValidationError):
+            product.deserialize("not a dictionary")
+        # Add more assertions for other types of bad data
+
+    def test_update_with_invalid_id(self):
+        """Test updating a product with an invalid or non-existent ID"""
+        product = ProductFactory.build()
+        with self.assertRaises(DataValidationError):
+            product.update()

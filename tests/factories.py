@@ -3,7 +3,6 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#
 # https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -21,23 +20,11 @@ import factory
 from factory.fuzzy import FuzzyChoice, FuzzyDecimal
 from service.models import Product, Category
 
-
 class ProductFactory(factory.Factory):
     """Creates fake products for testing"""
 
     class Meta:
         """Maps factory to data model"""
-
-        model = Product
-
-    id = factory.Sequence(lambda n: n)
-
-class ProductFactory(factory.Factory):
-    """Creates fake products for testing"""
-
-    class Meta:
-        """Maps factory to data model"""
-
         model = Product
 
     id = factory.Sequence(lambda n: n)
@@ -69,5 +56,3 @@ class ProductFactory(factory.Factory):
             Category.TOOLS,
         ]
     )
-
-    
