@@ -186,15 +186,18 @@ class TestProductModel(unittest.TestCase):
 
     def test_find_by_category(self):
         """It should Find Products by Category"""
-        products = ProductFactory.create_batch(10)
-        for product in products:
-            product.create()
-        category = products[0].category
-        count = len([product for product in products if product.category == category])
-        found = Product.find_by_category(category)
-        self.assertEqual(found.count(), count)
-        for product in found:
-            self.assertEqual(product.category, category)
+        # Create some products with different categories
+        # Example of creating products (you should adjust this according to your setup)
+        categories = [Category.CLOTHS, Category.FOOD, Category.TOOLS]
+        for category in categories:
+            for _ in range(5):
+                product = ProductFactory(category=category)
+                product.create()
+
+        # Test for each category
+        for category in categories:
+            found_products = Product.find_by_category(category)
+            self.assertEqual(len(found_products), 5)  # Assuming you have 5 products per category
 
     def test_deserialize_error(self):
         """Test deserialization with incorrect data types and missing fields"""

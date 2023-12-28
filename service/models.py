@@ -23,8 +23,10 @@ Product - A Product used in the Product Store
 Attributes:
 -----------
 name (string) - the name of the product
-description (string) - the description the product belongs to (i.e., dog, cat)
-available (boolean) - True for products that are available for adoption
+description (string) - the description of the product
+available (boolean) - True for products that are available
+price (decimal) - the price of the product
+category (enum) - the category the product belongs to
 
 """
 import logging
@@ -32,21 +34,19 @@ from enum import Enum
 from decimal import Decimal
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+from decimal import Decimal, InvalidOperation
 
 logger = logging.getLogger("flask.app")
 
-# Create the SQLAlchemy object to be initialized later in init_db()
 db = SQLAlchemy()
 
 def init_db(app):
-    """Initialize the SQLAlchemy app"""
     Product.init_db(app)
 
 class DataValidationError(Exception):
-    """Used for an data validation errors when deserializing"""
+    pass
 
 class Category(Enum):
-    """Enumeration of valid Product Categories"""
     UNKNOWN = 0
     CLOTHS = 1
     FOOD = 2
@@ -55,9 +55,6 @@ class Category(Enum):
     TOOLS = 5
 
 class Product(db.Model):
-    """
-    Class that represents a Product
-    """
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.String(250), nullable=False)
@@ -76,13 +73,22 @@ class Product(db.Model):
 
     def update(self):
         logger.info("Saving %s", self.name)
-        if not self.id or not Product.query.get(self.id):
+        if not self.id or not self.query.get(self.id):
+            logger.error("Attempt to update a Product with invalid ID")
             raise DataValidationError("Update called with invalid ID field")
         db.session.commit()
 
     def delete(self):
+        """Removes a Product from the data store"""
         logger.info("Deleting %s", self.name)
-        db.session.delete(self)
+        if not self.id:
+            logger.error("Attempt to delete a Product with no id")
+            raise DataValidationError("Delete called with empty ID field")
+        product = Product.query.get(self.id)
+        if not product:
+            logger.error("Attempt to delete a Product that does not exist")
+            raise DataValidationError("Attempt to delete a Product that does not exist")
+        db.session.delete(product)
         db.session.commit()
 
     def serialize(self) -> dict:
@@ -96,18 +102,32 @@ class Product(db.Model):
         }
 
     def deserialize(self, data: dict):
+        """
+        Deserializes a Product from a dictionary
+        """
         if not isinstance(data, dict):
             raise DataValidationError("Invalid data format for deserializing a Product")
+
         try:
             self.name = data["name"]
             self.description = data["description"]
-            self.price = Decimal(data["price"])
+            try:
+                self.price = Decimal(data["price"])
+            except InvalidOperation:
+                raise DataValidationError("Invalid price value")
+
             self.available = data["available"]
             self.category = getattr(Category, data["category"])
         except KeyError as error:
             raise DataValidationError(f"Invalid product: missing {error.args[0]}")
         except (TypeError, ValueError) as error:
             raise DataValidationError(f"Invalid value for product: {error}")
+
+        if not self.name or not self.description:
+            raise DataValidationError("Invalid product: name and description are required")
+        if self.price < 0:
+            raise DataValidationError("Invalid product: price must be >= 0")
+
         return self
 
     @classmethod
@@ -135,10 +155,7 @@ class Product(db.Model):
     @classmethod
     def find_by_price(cls, price: Decimal) -> list:
         logger.info("Processing price query for %s ...", price)
-        price_value = price
-        if isinstance(price, str):
-            price_value = Decimal(price.strip(' "'))
-        return cls.query.filter(cls.price == price_value)
+        return cls.query.filter(cls.price == price)
 
     @classmethod
     def find_by_availability(cls, available: bool = True) -> list:
@@ -146,6 +163,29 @@ class Product(db.Model):
         return cls.query.filter(cls.available == available)
 
     @classmethod
-    def find_by_category(cls, category: Category = Category.UNKNOWN) -> list:
+    def find_by_category(cls, category: Category) -> list:
+        """Returns all Products by their Category"""
         logger.info("Processing category query for %s ...", category.name)
-        return cls.query.filter(cls.category == category)
+        return cls.query.filter(cls.category == category).all()
+
+    # Test deserialization with missing fields
+    def test_deserialize_with_missing_data(self):
+        """It should not deserialize a Product with missing data"""
+        test_product = ProductFactory()
+        data = test_product.serialize()
+        del data["name"]  # remove name to simulate missing data
+        product = Product()
+        with self.assertRaises(DataValidationError):
+            product.deserialize(data)
+
+    # Test deserialization with invalid data types
+    def test_deserialize_with_bad_data(self):
+        """It should not deserialize a Product with bad data"""
+        test_product = ProductFactory()
+        data = test_product.serialize()
+        data["price"] = "not-a-decimal"  # invalid price
+        product = Product()
+        with self.assertRaises(DataValidationError):
+            product.deserialize(data)
+
+    

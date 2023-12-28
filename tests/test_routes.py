@@ -32,6 +32,8 @@ from service import app
 from service.common import status
 from service.models import db, init_db, Product
 from tests.factories import ProductFactory
+from service.models import Product, DataValidationError
+
 
 # Disable all but critical errors during normal test run
 # uncomment for debugging failing tests
@@ -256,3 +258,23 @@ class TestProductRoutes(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.get_json()
         self.assertEqual(data[0]["available"], product.available)
+
+    # Test deserialization with missing fields
+    def test_deserialize_with_missing_data(self):
+        """It should not deserialize a Product with missing data"""
+        test_product = ProductFactory()
+        data = test_product.serialize()
+        del data["name"]  # remove name to simulate missing data
+        product = Product()
+        with self.assertRaises(DataValidationError):
+            product.deserialize(data)  
+
+    # Test deserialization with invalid data types
+    def test_deserialize_with_bad_data(self):
+        """It should not deserialize a Product with bad data"""
+        test_product = ProductFactory()
+        data = test_product.serialize()
+        data["price"] = "not-a-decimal"  # invalid price
+        product = Product()
+        with self.assertRaises(DataValidationError):
+            product.deserialize(data)

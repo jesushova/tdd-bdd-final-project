@@ -23,6 +23,8 @@ from flask import url_for  # noqa: F401 pylint: disable=unused-import
 from service.models import Product
 from service.common import status  # HTTP Status Codes
 from . import app
+from service.models import Product, DataValidationError
+
 
 
 ######################################################################
@@ -68,11 +70,12 @@ def check_content_type(content_type):
 ######################################################################
 # C R E A T E   A   N E W   P R O D U C T
 ######################################################################
+
 @app.route("/products", methods=["POST"])
 def create_products():
     """
     Creates a Product
-    This endpoint will create a Product based the data in the body that is posted
+    This endpoint will create a Product based on the data in the body that is posted
     """
     app.logger.info("Request to Create a Product...")
     check_content_type("application/json")
@@ -80,15 +83,15 @@ def create_products():
     data = request.get_json()
     app.logger.info("Processing: %s", data)
     product = Product()
-    product.deserialize(data)
-    product.create()
-    app.logger.info("Product with new id [%s] saved!", product.id)
+    try:
+        product.deserialize(data)
+        product.create()
+        app.logger.info("Product with new id [%s] saved!", product.id)
+        message = product.serialize()
+    except DataValidationError as error:
+        abort(status.HTTP_400_BAD_REQUEST, str(error))
 
-    message = product.serialize()
-
-    #
     # Uncomment this line of code once you implement READ A PRODUCT
-    #
     # location_url = url_for("get_products", product_id=product.id, _external=True)
     location_url = "/"  # delete once READ is implemented
     return jsonify(message), status.HTTP_201_CREATED, {"Location": location_url}
@@ -131,10 +134,11 @@ def update_products(product_id):
     """Update a Product"""
     app.logger.info("Request to update Product with id: %s", product_id)
     check_content_type("application/json")
+
     product = Product.find(product_id)
     if not product:
         abort(status.HTTP_404_NOT_FOUND, f"Product with id '{product_id}' was not found.")
-    
+
     data = request.get_json()
     app.logger.info("Updating Product to: %s", data)
     try:
@@ -143,21 +147,8 @@ def update_products(product_id):
         product.update()
     except DataValidationError as error:
         abort(status.HTTP_400_BAD_REQUEST, str(error))
-    
+
     return jsonify(product.serialize()), status.HTTP_200_OK
-
-######################################################################
-# D E L E T E   A   P R O D U C T
-######################################################################
-
-@app.route("/products/<int:product_id>", methods=["DELETE"])
-def delete_products(product_id):
-    """Delete a Product"""
-    app.logger.info("Request to delete Product with id: %s", product_id)
-    product = Product.find(product_id)
-    if product:
-        product.delete()
-    return '', status.HTTP_204_NO_CONTENT
 
 ######################################################################
 # READ A PRODUCT
@@ -179,4 +170,19 @@ def get_products(product_id):
 
     app.logger.info("Returning product: %s", product.name)
     return product.serialize(), status.HTTP_200_OK
+
+######################################################################
+# D E L E T E   A   P R O D U C T
+######################################################################
+
+@app.route("/products/<int:product_id>", methods=["DELETE"])
+def delete_products(product_id):
+    """Delete a Product"""
+    app.logger.info("Request to delete Product with id: %s", product_id)
+    product = Product.find(product_id)
+    if not product:
+        abort(status.HTTP_404_NOT_FOUND, f"Product with id '{product_id}' was not found.")
+    
+    product.delete()
+    return '', status.HTTP_204_NO_CONTENT
 
