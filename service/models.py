@@ -168,6 +168,34 @@ class Product(db.Model):
         logger.info("Processing category query for %s ...", category.name)
         return cls.query.filter(cls.category == category).all()
 
+    @staticmethod
+    def test_deserialize_with_missing_data():
+        """It should not deserialize a Product with missing data"""
+        test_product = ProductFactory()
+        data = test_product.serialize()
+        del data["name"]  # remove name to simulate missing data
+        product = Product()
+        with self.assertRaises(DataValidationError):
+            product.deserialize(data)
+
+    @staticmethod
+    def test_deserialize_with_bad_data():
+        """It should not deserialize a Product with bad data"""
+        test_product = ProductFactory()
+        data = test_product.serialize()
+        data["price"] = "not-a-decimal"  # invalid price
+        product = Product()
+        with self.assertRaises(DataValidationError):
+            product.deserialize(data)
+
+    @staticmethod
+    def test_find_by_category():
+        """It should find Products by their Category"""
+        Product(name="Test1", category=Category.FOOD).create()
+        Product(name="Test2", category=Category.TOOLS).create()
+        found = Product.find_by_category(Category.FOOD)
+        assert all(product.category == Category.FOOD for product in found)
+
     # Test deserialization with missing fields
     def test_deserialize_with_missing_data(self):
         """It should not deserialize a Product with missing data"""

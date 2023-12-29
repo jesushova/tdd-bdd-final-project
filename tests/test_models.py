@@ -103,6 +103,83 @@ class TestProductModel(unittest.TestCase):
         self.assertEqual(new_product.available, product.available)
         self.assertEqual(new_product.category, product.category)
 
+    def test_serialize_a_product(self):
+        """It should serialize a Product"""
+        product = ProductFactory()
+        data = product.serialize()
+        self.assertNotEqual(data, [])
+        self.assertIn("id", data)
+        self.assertIn("name", data)
+        self.assertIn("description", data)
+        self.assertIn("price", data)
+        self.assertIn("available", data)
+        self.assertIn("category", data)
+
+    def test_deserialize_a_product(self):
+        """It should deserialize a Product"""
+        data = {
+            "id": 1,
+            "name": "Laptop",
+            "description": "A powerful machine",
+            "price": 1200.00,
+            "available": True,
+            "category": "ELECTRONICS"
+        }
+        product = Product()
+        product.deserialize(data)
+        self.assertEqual(product.id, 1)
+        self.assertEqual(product.name, "Laptop")
+        self.assertEqual(product.description, "A powerful machine")
+        self.assertEqual(product.price, 1200.00)
+        self.assertEqual(product.available, True)
+        self.assertEqual(product.category, Category.ELECTRONICS)
+
+    def test_deserialize_with_missing_data(self):
+        """It should not deserialize a Product with missing data"""
+        data = {
+            "id": 1,
+            "name": "Laptop",
+            # Description is missing
+            "price": 1200.00,
+            "available": True,
+            "category": "ELECTRONICS"
+        }
+        product = Product()
+        with self.assertRaises(DataValidationError):
+            product.deserialize(data)
+
+    def test_deserialize_with_bad_data(self):
+        """It should not deserialize a Product with bad data"""
+        data = {
+            "id": 1,
+            "name": "Laptop",
+            "description": "A powerful machine",
+            "price": "not-a-decimal",  # Invalid price
+            "available": True,
+            "category": "ELECTRONICS"
+        }
+        product = Product()
+        with self.assertRaises(DataValidationError):
+            product.deserialize(data)
+
+    def test_find_by_category(self):
+        """It should Find Products by Category"""
+        category = Category.FOOD
+        # Create 5 products in the FOOD category
+        for _ in range(5):
+            product = ProductFactory(category=category)
+            product.create()
+        # Should find 5 products in the FOOD category
+        found_products = Product.find_by_category(category)
+        self.assertEqual(len(found_products), 5)
+        for product in found_products:
+            self.assertEqual(product.category, category)
+
+    def test_product_not_found(self):
+        """It should not Find a Product that doesn't exist"""
+        product = Product.find(0)
+        self.assertIsNone(product)
+
     #
     # ADD YOUR TEST CASES HERE
     #
@@ -211,3 +288,5 @@ class TestProductModel(unittest.TestCase):
         product = ProductFactory.build()
         with self.assertRaises(DataValidationError):
             product.update()
+
+    
